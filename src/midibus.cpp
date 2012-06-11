@@ -22,6 +22,7 @@
 #include "sys/poll.h"
 #include "lash.h"
 
+#ifdef HAVE_ALSA
 midibus::midibus( int a_localclient,
 		  int a_destclient, 
 		  int a_destport, 
@@ -29,12 +30,22 @@ midibus::midibus( int a_localclient,
 		  const char *a_client_name, 
 		  const char *a_port_name,
 		  char a_id, int a_queue )
+#else
+midibus::midibus( int a_localclient,
+		  int a_destclient, 
+		  int a_destport, 
+		  const char *a_client_name, 
+		  const char *a_port_name,
+		  char a_id, int a_queue )
+#endif
 {
     /* set members */
     m_local_addr_client = a_localclient;
     m_dest_addr_client = a_destclient;
     m_dest_addr_port   = a_destport;
+#ifdef HAVE_ALSA
     m_seq            = a_seq;
+#endif
     m_queue          = a_queue;
 
     m_id = a_id;
@@ -303,6 +314,7 @@ midibus::~midibus()
 void 
 midibus::play( event *a_e24, unsigned char a_channel )
 {
+#ifdef HAVE_ALSA
     lock();
 
   
@@ -347,6 +359,9 @@ midibus::play( event *a_e24, unsigned char a_channel )
 	
 
     unlock();
+#else
+    // XXX_SNDIO
+#endif // HAVE_ALSA
 }
 
 
@@ -364,6 +379,7 @@ min ( long a, long b ){
 void 
 midibus::sysex( event *a_e24 )
 {
+#ifdef HAVE_ALSA
     lock();
 
     snd_seq_event_t ev;
@@ -402,6 +418,9 @@ midibus::sysex( event *a_e24 )
     }
 
     unlock();
+#else
+    // XXX_SNDIO
+#endif
 }
 
 
@@ -409,11 +428,15 @@ midibus::sysex( event *a_e24 )
 void 
 midibus::flush()
 {
+#ifdef HAVE_ALSA
     lock();
 
     snd_seq_drain_output( m_seq );
 
     unlock();
+#else
+    // XXX_SNDIO
+#endif
 } 
 
 
@@ -705,6 +728,7 @@ mastermidibus::unlock( )
 void 
 mastermidibus::start()
 {
+#ifdef HAVE_ALSA
     lock();
          
     /* start timer */
@@ -714,6 +738,9 @@ mastermidibus::start()
 	m_buses_out[i]->start();
 
      unlock();
+#else
+     // XXX_SNDIO
+#endif
 }
 
 
@@ -721,6 +748,7 @@ mastermidibus::start()
     void
 mastermidibus::continue_from( long a_tick)
 {
+#ifdef HAVE_ALSA
     lock();
 
     /* start timer */
@@ -730,6 +758,9 @@ mastermidibus::continue_from( long a_tick)
         m_buses_out[i]->continue_from( a_tick );
 
     unlock();
+#else
+    // XXX_SNDIO
+#endif
 }
 
 void
@@ -746,6 +777,7 @@ mastermidibus::init_clock( long a_tick )
 void 
 mastermidibus::stop()
 {
+#ifdef HAVE_ALSA
     lock();
 
     for ( int i=0; i < m_num_out_buses; i++ )
@@ -758,6 +790,9 @@ mastermidibus::stop()
     /* start timer */
     snd_seq_stop_queue( m_alsa_seq, m_queue, NULL );
     unlock();
+#else
+    // XXX_SNDIO
+#endif
 }
 
 
@@ -776,6 +811,7 @@ mastermidibus::clock( long a_tick )
 void 
 mastermidibus::set_ppqn( int a_ppqn )
 {
+#ifdef HAVE_ALSA
     lock();
 
     m_ppqn = a_ppqn;
@@ -794,12 +830,16 @@ mastermidibus::set_ppqn( int a_ppqn )
     snd_seq_set_queue_tempo( m_alsa_seq, m_queue, tempo );
 
     unlock();
+#else
+    // XXX_SNDIO
+#endif
 }
 
 
 void 
 mastermidibus::set_bpm( int a_bpm )
 {
+#ifdef HAVE_ALSA
     lock();
 
     m_bpm = a_bpm;
@@ -817,17 +857,24 @@ mastermidibus::set_bpm( int a_bpm )
     snd_seq_set_queue_tempo(m_alsa_seq, m_queue, tempo );
 
     unlock();
+#else
+    // XXX_SNDIO
+#endif
 }
 
 // flushes our local queue events out into ALSA
 void 
 mastermidibus::flush()
 {
+#ifdef HAVE_ALSA
     lock();
 
     snd_seq_drain_output( m_alsa_seq );
 
     unlock();
+#else
+    // XXX_SNDIO
+#endif
 } 
 
 
@@ -835,6 +882,7 @@ mastermidibus::flush()
 /* fills the array with our buses */
 mastermidibus::mastermidibus()
 {
+#ifdef HAVE_ALSA
     /* temp return */
     int ret;
     
@@ -868,11 +916,15 @@ mastermidibus::mastermidibus()
 
 	/* notify lash of our client ID so it can restore connections */
 	lash_driver->set_alsa_client_id(snd_seq_client_id(m_alsa_seq));
+#else
+    // XXX_SNDIO
+#endif
 }
 
 void
 mastermidibus::init( )
 {
+#ifdef HAVE_ALSA
     
     /* client info */
     snd_seq_client_info_t *cinfo;
@@ -1030,12 +1082,15 @@ mastermidibus::init( )
 
     for ( int i=0; i<m_num_in_buses; i++ )
         set_input(i,m_init_input[i]);
-
+#else
+    // XXX_SNDIO
+#endif
     
 }
       
 mastermidibus::~mastermidibus()
 {
+#ifdef HAVE_ALSA
     for ( int i=0; i<m_num_out_buses; i++ )
 	delete m_buses_out[i];
 
@@ -1049,7 +1104,9 @@ mastermidibus::~mastermidibus()
 
     /* close client */
     snd_seq_close( m_alsa_seq );
-
+#else
+    // XXX_SNDIO
+#endif
 }
 
 
@@ -1242,6 +1299,7 @@ mastermidibus::is_more_input( ){
 void 
 mastermidibus::port_start( int a_client, int a_port )
 {
+#ifdef HAVE_ALSA
     lock();
     
  
@@ -1363,6 +1421,9 @@ mastermidibus::port_start( int a_client, int a_port )
 			     POLLIN);
     
     unlock();
+#else
+    // XXX_SNDIO
+#endif
 }
 
 void 
@@ -1395,6 +1456,7 @@ mastermidibus::port_exit( int a_client, int a_port )
 bool
 mastermidibus::get_midi_event( event *a_in )
 {
+#ifdef HAVE_ALSA
     lock();
     
     snd_seq_event_t *ev; 
@@ -1509,6 +1571,9 @@ mastermidibus::get_midi_event( event *a_in )
     unlock();
     
     return true;
+#else
+    // XXX_SNDIO
+#endif
 }
 
 void 
